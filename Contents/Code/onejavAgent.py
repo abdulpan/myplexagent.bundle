@@ -1,15 +1,15 @@
-SEARCH_URL = 'https://www.javbus.com/%s'
-curID = "javbus"
+SEARCH_PIC_URL = 'https://onejav.com/search/%s'
+curID = "onejav"
+SEARCH_TITLE_URL = 'https://www.javbus.com/%s'
+#curID = "javbus"
 
 
 def search(query, results, media, lang):
     try:
-        Log('Search Query: %s' % str(SEARCH_URL % query))
+        Log('Search Query (title): %s' % str(SEARCH_TITLE_URL % query))
 
-        for movie in HTML.ElementFromURL(SEARCH_URL % query).xpath('//div[contains(@class,"container")]'):
-            movieid = movie.xpath('.//h3/a')[0].text_content().strip()
-            Log('Search Result: id: %s' % movieid)
-            results.Append(MetadataSearchResult(id=curID + "|" + str(movieid), name=str(movieid), score=100, lang=lang))
+        movieid = HTML.ElementFromURL(SEARCH_TITLE_URL % query).xpath('//div[contains(@class,"container")]/h3')[0].text_content().strip()
+        results.Append(MetadataSearchResult(id=curID + "|" + str(query), name=str(movieid), score=100, lang=lang))
 
         results.Sort('score', descending=True)
         Log(results)
@@ -22,9 +22,9 @@ def update(metadata, media, lang):
         return
 
     query = str(metadata.id).split("|")[1]
-    Log('Update Query: %s' % str(SEARCH_URL % metadata.id))
+    Log('Update Query (image): %s' % str(SEARCH_PIC_URL % metadata.id))
     try:
-        movie = HTML.ElementFromURL(SEARCH_URL % query).xpath('//div[contains(@class,"container")]')[0]
+        movie = HTML.ElementFromURL(SEARCH_PIC_URL % query).xpath('//div[contains(@class,"container")]')[0]
 
         # post
         image = movie.xpath('.//img[contains(@class,"image")]')[0]
@@ -33,8 +33,17 @@ def update(metadata, media, lang):
         posterUrl = image.get('src')
         metadata.posters[posterUrl] = Proxy.Preview(thumb)
 
-        # name
-        metadata.title = metadata.id
+        # tags
+        taglist = []
+        metadata.genres.clear()
+        for tagElem in HTML.ElementFromURL(SEARCH_TITLE_URL % query).xpath('//div[contains(@class,"container")]/span[contains(@class,"genre")]/a'):
+            tag = tagElem.text_content().strip()
+            metadata.genres.add(tag)
+            taglist.append(tag)
+        Log("Tags found: %s" % (' | '.join(taglist)))
+        #metadata.title = metadata.name
+
         metadata.movie.xpath('.//p[contains(@class,"level has-text-grey-dark")]')[0].text_content().strip()
     except Exception as e:
         Log(e)
+        Log("error")
